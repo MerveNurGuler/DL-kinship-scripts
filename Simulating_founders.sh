@@ -46,7 +46,44 @@ bedtools getfasta -fi /path/to/reference/genome/hs37d5.fa -bed bed_200K.file -be
 # Remove positions with allele 'N'
 sed -i '/N/d' ref_alleles_200K
 
-#Run the R script
+# Run the R script
 Rscript nucleotide_integrating.R
 
+# Merge new nucleotides with original VCF
+paste lbk500_200K.vcf nuc_ref_alt_1M | awk '{print $1" "$2" "$3" "$260" "$261}' > lbk500_200K_part1.vcf
+awk '{for(i=6;i<=NF;i++) printf $i" "; print ""}' lbk500_200K.vcf > lbk500_200K_part2.vcf
+paste lbk500_200K_part1.vcf lbk500_1M_part2.vcf | tr ' ' '\t' > lbk500_wnuc_200K.vcf
+
+# Add header
+cat header lbk500_wnuc_200K.vcf | tr ' ' '\t' > lbk500_wnuc_200K_h.vcf
+
+# Interpolation
+ADNA_PATH=/path/to/adna_tools
+python3 $ADNA_PATH/filter_vcf.py --vcf lbk500_wnuc_200K_h.vcf --prefix inter_biSNPs_lbk_200K --f_maps /path/to/genetic_map/female_chr{}.txt --m_maps /path/to/genetic_map/male_chr{}.txt --x_chr X --interpolate
+
+mv lbk500_wnuc_200K_h.vcf founders_200K.vcf
+
+# Remove the header except for column names
+awk 'NR==1 {print; exit}' founders_200K.vcf > firstline
+
+# Create a new header with assigned sexes
+Rscript -e "
+setwd('/path/to/working/directory')
+header = read.csv2('firstline', sep='\t', header=FALSE, stringsAsFactors = FALSE)
+library(stringr)
+header = str_replace_all(header, 'tsk_', 'ind')
+a = sample(x = c('M', 'F'), prob = c(.5, .5), size = 250, replace = TRUE)
+fam_file = data.frame(matrix(ncol = 2, nrow = 250))
+newheader = header
+for (i in 10:259) {
+  newheader[i] = str_c(header[i],'',a[(i-9)])
+  fam_file[(i-9),1] = newheader[i]
+  fam_file[(i-9),2] = a[(i-9)]
+}
+write.table(fam_file, file='founders_1M.fam', quote = FALSE, row.names = FALSE, col.names = FALSE, sep = '\t')
+write.table(t(as.data.frame(newheader)), file='header_wsex', quote = FALSE, row.names = FALSE, col.names = FALSE, sep = '\t')
+"
+
+# Combine header with VCF
+cat header_wsex founders_200K.vcf | sed -e '2d' > founders_200K_final.vcf
 
