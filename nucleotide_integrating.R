@@ -13,7 +13,7 @@ G = as.data.frame(prop.table(table(as.factor(grep("^G",str_c(ref_alt$REF,'',ref_
 C = as.data.frame(prop.table(table(as.factor(grep("^C",str_c(ref_alt$REF,'',ref_alt$ALT), value = TRUE)))))
 T = as.data.frame(prop.table(table(as.factor(grep("^T",str_c(ref_alt$REF,'',ref_alt$ALT), value = TRUE)))))
 
-ref_alleles = as.data.frame((read.table("ref_alleles_1M"))[,4])
+ref_alleles = as.data.frame((read.table("ref_alleles_200K"))[,4])
 
 new_nucleotides = data.frame(matrix(ncol = 2, nrow = nrow(ref_alleles)))
 new_nucleotides[,1] = ref_alleles
